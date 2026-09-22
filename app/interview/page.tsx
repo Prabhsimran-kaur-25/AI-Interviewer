@@ -138,6 +138,8 @@ function InterviewContent() {
         content: m.text,
       }));
 
+      const resumeText = sessionStorage.getItem("resumeText") || undefined;
+
       const res = await fetch("/api/interview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,6 +149,7 @@ function InterviewContent() {
           durationMinutes,
           startTime,
           conversationHistory,
+          resumeText,
         }),
       });
 

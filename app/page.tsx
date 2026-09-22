@@ -26,8 +26,44 @@ export default function Home() {
   const [subject, setSubject] = useState<Subject>("DBMS");
   const [difficulty, setDifficulty] = useState<Difficulty>("intermediate");
   const [duration, setDuration] = useState(10);
+  const [resumeName, setResumeName] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setResumeName(file.name);
+    
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload-resume", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.text) {
+        sessionStorage.setItem("resumeText", data.text);
+      } else {
+        alert("Failed to parse resume");
+        setResumeName("");
+      }
+    } catch (err) {
+      alert("Error uploading resume");
+      setResumeName("");
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   function handleStart() {
+    if (!resumeName) {
+      sessionStorage.removeItem("resumeText");
+    }
+
     const params = new URLSearchParams({
       subject,
       difficulty,
@@ -113,11 +149,36 @@ export default function Home() {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Resume Context (Optional)
+            </label>
+            <div className="flex items-center gap-4">
+              <label className="cursor-pointer rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <span>{isUploading ? "Uploading..." : "Upload PDF"}</span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
+              </label>
+              {resumeName && !isUploading && (
+                <span className="text-sm text-green-600 truncate max-w-[200px]">
+                  ✓ {resumeName}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Upload your resume to get personalized questions.</p>
+          </div>
+
           <button
             onClick={handleStart}
-            className="w-full rounded-md bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-700 transition"
+            disabled={isUploading}
+            className="w-full rounded-md bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-700 disabled:bg-gray-400 transition"
           >
-            Start Interview
+            {isUploading ? "Please wait..." : "Start Interview"}
           </button>
         </div>
       </div>

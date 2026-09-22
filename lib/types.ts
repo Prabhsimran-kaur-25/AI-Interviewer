@@ -18,6 +18,7 @@ export interface InterviewRequest {
   durationMinutes: number;
   startTime: number;
   conversationHistory: ConversationTurn[];
+  resumeText?: string;
 }
 
 export type InterviewAction =

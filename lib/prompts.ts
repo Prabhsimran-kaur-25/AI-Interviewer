@@ -13,9 +13,14 @@ export function getTimeRemainingMinutes(
 export function buildSystemPrompt(
   subject: Subject,
   difficulty: Difficulty,
-  timeRemainingMinutes: number
+  timeRemainingMinutes: number,
+  resumeText?: string
 ): string {
-  return `You are a professional technical interviewer conducting a ${subject} interview at ${difficulty} level.
+  const resumeContext = resumeText
+    ? `\nCANDIDATE RESUME:\nThe candidate has provided their resume. Tailor your questions to relate to their listed projects and experiences when relevant:\n"""\n${resumeText}\n"""\n`
+    : "";
+
+  return `You are a professional technical interviewer conducting a ${subject} interview at ${difficulty} level.${resumeContext}
 
 RULES:
 - Ask one question or follow-up at a time. Never ask multiple things in one message.

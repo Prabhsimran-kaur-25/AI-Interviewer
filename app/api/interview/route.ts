@@ -18,7 +18,7 @@ function isValidTurnResponse(data: unknown): data is InterviewTurnResponse {
 export async function POST(req: NextRequest) {
   try {
     const body: InterviewRequest = await req.json();
-    const { subject, difficulty, durationMinutes, startTime, conversationHistory } = body;
+    const { subject, difficulty, durationMinutes, startTime, conversationHistory, resumeText } = body;
 
     if (!subject || !difficulty || !durationMinutes || !startTime) {
       return NextResponse.json(
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const timeRemaining = getTimeRemainingMinutes(startTime, durationMinutes);
-    const systemPrompt = buildSystemPrompt(subject, difficulty, timeRemaining);
+    const systemPrompt = buildSystemPrompt(subject, difficulty, timeRemaining, resumeText);
 
     const contents = conversationHistory.map((turn) => ({
       role: turn.role,
