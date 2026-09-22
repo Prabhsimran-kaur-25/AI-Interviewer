@@ -7,6 +7,7 @@ import {
   Difficulty,
   InterviewTurnResponse,
   Subject,
+  ReportResponse
 } from "@/lib/types";
 
 interface ChatMessage {
@@ -27,6 +28,9 @@ function InterviewContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOver, setIsOver] = useState(false);
+  const [report, setReport] = useState<ReportResponse | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
   const [startTime] = useState(() => Date.now());
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasStarted = useRef(false);
@@ -39,7 +43,38 @@ function InterviewContent() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, report]);
+
+  useEffect(() => {
+    if (isOver && messages.length > 0) {
+      generateReport();
+    }
+  }, [isOver]);
+
+  async function generateReport() {
+    setIsGeneratingReport(true);
+    try {
+      const conversationHistory = messages.map((m) => ({
+        role: m.role,
+        content: m.text,
+      }));
+      const res = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, difficulty, conversationHistory }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReport(data);
+      } else {
+        console.error("Failed to fetch report");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }
 
   async function sendTurn(history: ChatMessage[]) {
     setIsLoading(true);
@@ -144,13 +179,63 @@ function InterviewContent() {
         )}
 
         {isOver && (
-          <div className="self-center mt-4">
-            <button
-              onClick={() => router.push("/")}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition"
-            >
-              Back to home
-            </button>
+          <div className="mt-8 border-t border-gray-200 pt-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Interview Complete</h2>
+            {isGeneratingReport ? (
+              <p className="text-sm text-gray-500 animate-pulse">Generating your performance report...</p>
+            ) : report ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Overall</p>
+                    <p className="text-2xl font-bold text-gray-900">{report.scores?.overall ?? 0}/100</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Communication</p>
+                    <p className="text-2xl font-bold text-gray-900">{report.scores?.communication ?? 0}/10</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Tech Accuracy</p>
+                    <p className="text-2xl font-bold text-gray-900">{report.scores?.technical_accuracy ?? 0}/10</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Problem Solving</p>
+                    <p className="text-2xl font-bold text-gray-900">{report.scores?.problem_solving ?? 0}/10</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-green-700 uppercase mb-2">Strengths</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                    {report.strengths?.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-red-700 uppercase mb-2">Weaknesses</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                    {report.weaknesses?.map((w, i) => <li key={i}>{w}</li>)}
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-blue-700 uppercase mb-2">Suggestions</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                    {report.suggestions?.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+                <div className="pt-4 flex gap-4">
+                  <button
+                    onClick={() => router.push("/")}
+                    className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition"
+                  >
+                    Back to home
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-red-600">Failed to load report.</p>
+            )}
           </div>
         )}
 

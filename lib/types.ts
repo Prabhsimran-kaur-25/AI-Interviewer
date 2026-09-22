@@ -31,3 +31,15 @@ export interface InterviewTurnResponse {
   action: InterviewAction;
   internalNote?: string;
 }
+
+export interface ReportResponse {
+  scores: {
+    overall: number;
+    communication: number;
+    technical_accuracy: number;
+    problem_solving: number;
+  };
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+}
