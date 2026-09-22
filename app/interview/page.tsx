@@ -10,6 +10,8 @@ import {
   ReportResponse
 } from "@/lib/types";
 
+import AIAvatar from "@/components/AIAvatar";
+
 interface ChatMessage {
   role: "user" | "model";
   text: string;
@@ -32,6 +34,7 @@ function InterviewContent() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const [isListening, setIsListening] = useState(false);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   const [startTime] = useState(() => Date.now());
@@ -164,6 +167,9 @@ function InterviewContent() {
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(data.message);
+        utterance.onstart = () => setIsAiSpeaking(true);
+        utterance.onend = () => setIsAiSpeaking(false);
+        utterance.onerror = () => setIsAiSpeaking(false);
         window.speechSynthesis.speak(utterance);
       }
 
@@ -218,6 +224,10 @@ function InterviewContent() {
           {difficulty} level &middot; {durationMinutes} min
         </p>
       </header>
+
+      <div className="mb-6 h-[250px] w-full shrink-0">
+        <AIAvatar isSpeaking={isAiSpeaking} />
+      </div>
 
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto pb-4">
         {messages.map((msg, i) => (
