@@ -40,7 +40,11 @@ export async function POST(req: NextRequest) {
         ? "Begin the interview with your first question."
         : "Continue the interview based on the conversation so far.";
 
-    contents.push({ role: "user", parts: [{ text: promptForThisTurn }] });
+    if (contents.length > 0 && contents[contents.length - 1].role === "user") {
+      contents[contents.length - 1].parts.push({ text: `\n\n[System Note: ${promptForThisTurn}]` });
+    } else {
+      contents.push({ role: "user", parts: [{ text: promptForThisTurn }] });
+    }
 
     const result = await ai.models.generateContent({
       model: MODEL_NAME,

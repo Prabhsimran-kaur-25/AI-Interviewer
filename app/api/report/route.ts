@@ -35,7 +35,11 @@ You must strictly return JSON matching this schema:
       parts: [{ text: turn.content }],
     }));
 
-    contents.push({ role: "user", parts: [{ text: "Please generate the evaluation report based on this interview." }] });
+    if (contents.length > 0 && contents[contents.length - 1].role === "user") {
+      contents[contents.length - 1].parts.push({ text: "\n\nPlease generate the evaluation report based on this interview." });
+    } else {
+      contents.push({ role: "user", parts: [{ text: "Please generate the evaluation report based on this interview." }] });
+    }
 
     const result = await ai.models.generateContent({
       model: MODEL_NAME,
