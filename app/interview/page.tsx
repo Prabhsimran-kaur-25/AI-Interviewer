@@ -31,6 +31,9 @@ function InterviewContent() {
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
   const [startTime] = useState(() => Date.now());
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasStarted = useRef(false);
@@ -44,6 +47,56 @@ function InterviewContent() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, report]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.onresult = (event: any) => {
+          let finalTranscript = "";
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+            }
+          }
+          if (finalTranscript) {
+            setInput((prev) => prev + (prev.trim() ? " " : "") + finalTranscript.trim());
+          }
+        };
+        recognitionRef.current.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+        };
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const toggleListen = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current?.start();
+      setIsListening(true);
+    }
+  };
 
   useEffect(() => {
     if (isOver && messages.length > 0) {
@@ -105,6 +158,12 @@ function InterviewContent() {
       const data: InterviewTurnResponse = await res.json();
       setMessages((prev) => [...prev, { role: "model", text: data.message }]);
 
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(data.message);
+        window.speechSynthesis.speak(utterance);
+      }
+
       if (data.action === "end_interview") {
         setIsOver(true);
       }
@@ -130,6 +189,11 @@ function InterviewContent() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || isLoading || isOver) return;
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
 
     const next = [...messages, { role: "user" as const, text: input.trim() }];
     setMessages(next);
@@ -254,11 +318,27 @@ function InterviewContent() {
                   handleSubmit(e);
                 }
               }}
-              placeholder="Type your answer..."
+              placeholder="Type or speak your answer..."
               disabled={isLoading}
               rows={2}
               className="flex-1 resize-none rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:bg-gray-50"
             />
+            <button
+              type="button"
+              onClick={toggleListen}
+              title={isListening ? "Stop listening" : "Start speaking"}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition flex items-center justify-center ${
+                isListening
+                  ? "bg-red-100 text-red-600 hover:bg-red-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {isListening ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+              )}
+            </button>
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
